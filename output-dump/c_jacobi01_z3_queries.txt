@@ -1,0 +1,40 @@
+Generated the following Z3 variables: 
+	m_imopVarPre3: Int
+	n_imopVarPre8: Int
+	tid1: Int
+	tid2: Int
+	j_imopVarPre5: Int
+	j_imopVarPre7: Int
+	i_imopVarPre6: Int
+	i_imopVarPre4: Int
+	numTh: Int
+Final set of inequations are: 
+	[ >= , i_imopVarPre4, 0]
+	[ < , i_imopVarPre4, n_imopVarPre8]
+	[ >= , i_imopVarPre6, 1]
+	[ < , i_imopVarPre6,  - , n_imopVarPre8, 1]
+	[ >= , j_imopVarPre7,  + , 1,  * , tid2,  + ,  / ,  - ,  - , m_imopVarPre3, 1, 1, numTh,  % ,  - ,  - , m_imopVarPre3, 1, 1, numTh]
+	[ < , j_imopVarPre7,  + ,  + , 1,  * , tid2,  + ,  / ,  - ,  - , m_imopVarPre3, 1, 1, numTh,  % ,  - ,  - , m_imopVarPre3, 1, 1, numTh,  + ,  / ,  - ,  - , m_imopVarPre3, 1, 1, numTh,  % ,  - ,  - , m_imopVarPre3, 1, 1, numTh]
+	[ >= , j_imopVarPre5,  + , 0,  * , tid1,  + ,  / ,  - , m_imopVarPre3, 0, numTh,  % ,  - , m_imopVarPre3, 0, numTh]
+	[ < , j_imopVarPre5,  + ,  + , 0,  * , tid1,  + ,  / ,  - , m_imopVarPre3, 0, numTh,  % ,  - , m_imopVarPre3, 0, numTh,  + ,  / ,  - , m_imopVarPre3, 0, numTh,  % ,  - , m_imopVarPre3, 0, numTh]
+	[ = ,  + , i_imopVarPre4,  * , m_imopVarPre3, j_imopVarPre5,  + , i_imopVarPre6,  * , m_imopVarPre3, j_imopVarPre7]
+	[ > , numTh, 0]
+	[ <= , numTh, 13]
+	[ >= , tid2, 0]
+	[ < , tid2, numTh]
+	[ >= , tid1, 0]
+	[ < , tid1, numTh]
+	[ != , tid2, tid1]
+
+Time taken: 1.804700283s for SATISFIABLE state.
+Solution: 
+	m_imopVarPre3: 4
+	n_imopVarPre8: 6
+	tid1: 0
+	tid2: 1
+	j_imopVarPre5: 1
+	j_imopVarPre7: 2
+	i_imopVarPre6: 1
+	i_imopVarPre4: 5
+	numTh: 2
+

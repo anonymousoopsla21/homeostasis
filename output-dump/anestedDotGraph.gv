@@ -1,0 +1,25 @@
+digraph graph214126413 {
+	compound=true;
+	edge[color=blue];
+	subgraph cluster2084435065 {
+		compound=true;
+		style=dotted;
+		label="main()";
+		node1896277646[label="B_FuDe", shape="triangle"];
+		node2128227771[label="E_FuDe", shape="invtriangle"];
+		subgraph cluster772777427 {
+			compound=true;
+			style=dotted;
+			label="CompoundStatement";
+			node83954662[label="B_CoSt", shape="triangle"];
+			node1751075886[label="E_CoSt", shape="invtriangle"];
+			node930990596[label="int a = 10;"];
+			node1972439101[label="a++;"];
+		}
+	}
+	node1896277646 -> node83954662[tailport=s, headport=n, weight=8, lhead=cluster772777427];
+	node83954662 -> node930990596[tailport=s, headport=n, weight=8];
+	node930990596 -> node1972439101[weight=8, tailport=s, headport=n];
+	node1972439101 -> node1751075886[weight=8, tailport=s, headport=n];
+	node1751075886 -> node2128227771[tailport=s, headport=n, weight=8, ltail=cluster772777427];
+}

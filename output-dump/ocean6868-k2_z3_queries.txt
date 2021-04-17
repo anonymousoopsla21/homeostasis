@@ -1,0 +1,55 @@
+Generated the following Z3 variables: 
+	_imopVarPre80_imopVar87: Int
+	_imopVarPre80_imopVar86: Int
+	start_imopVar79: Int
+	j_imopVar76: Int
+	j_imopVar77: Int
+	i_imopVar78: Int
+	dim_imopVar85: Int
+	tid1: Int
+	tid2: Int
+	_imopVarPre74_imopVar80: Int
+	i_imopVar81: Int
+	_imopVarPre74_imopVar83: Int
+	dim_imopVar84: Int
+	numTh: Int
+	start_imopVar82: Int
+Final set of inequations are: 
+	[ = , start_imopVar82,  + , 1, _imopVarPre74_imopVar83]
+	[ = , start_imopVar79,  + , 1, _imopVarPre74_imopVar80]
+	[ >= , j_imopVar77, 1]
+	[ < , j_imopVar77,  - , dim_imopVar84, 1]
+	[ >= , j_imopVar76, 1]
+	[ < , j_imopVar76,  - , dim_imopVar85, 1]
+	[ >= , i_imopVar78,  + , 1, _imopVarPre74_imopVar80]
+	[ < , i_imopVar78,  + , 1, _imopVarPre80_imopVar86]
+	[ >= , i_imopVar81,  + , 1, _imopVarPre74_imopVar83]
+	[ < , i_imopVar81,  + , 1, _imopVarPre80_imopVar87]
+	[ = , j_imopVar76, j_imopVar77]
+	[ = , i_imopVar78, i_imopVar81]
+	[ > , numTh, 0]
+	[ <= , numTh, 13]
+	[ >= , tid2, 0]
+	[ < , tid2, numTh]
+	[ >= , tid1, 0]
+	[ < , tid1, numTh]
+	[ != , tid2, tid1]
+
+Time taken: 0.267021326s for SATISFIABLE state.
+Solution: 
+	_imopVarPre80_imopVar87: 0
+	_imopVarPre80_imopVar86: 0
+	start_imopVar79: 0
+	j_imopVar76: 1
+	j_imopVar77: 1
+	i_imopVar78: 0
+	dim_imopVar85: 3
+	tid1: 0
+	tid2: 1
+	_imopVarPre74_imopVar80: -1
+	i_imopVar81: 0
+	_imopVarPre74_imopVar83: -1
+	dim_imopVar84: 3
+	numTh: 2
+	start_imopVar82: 0
+

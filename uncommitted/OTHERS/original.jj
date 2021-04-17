@@ -1,0 +1,892 @@
+/*
+
+  C grammar defintion for use with JavaCC
+  Contributed by Doug South (dsouth@squirrel.com.au) 21/3/97
+
+  This parser assumes that the C source file has been preprocessed : all
+  #includes have been included and all macros have been expanded. I accomplish
+  this with "gcc -P -E <source file> > <output file>".
+
+  There is a problem with compiler specific types, such as __signed, __const,
+  __inline__, etc. These types can be added as typedef types before the parser
+  is run on a file. See main() for an example. I have also found a strange little
+  compiler specific "type" if you can call it that. It is __attribute__, but it
+  does not seem to be used as a type. I found that just deleting the __attribute__
+  and the following "offensive" code works.
+
+  This grammar also prints out all the types defined while parsing the file. This
+  is done via a call to printTypes() when the parser is complete. If you do not want
+  this, just comment out the printTypes() method call in the production rule
+  TranslationUnit(), which BTW is the root node for parsing a C source file.
+
+  I have not in anyway extensively tested this grammar, in fact it is barely tested,
+  but I imagine it is better to have a starting point for a C grammar other than from
+  scratch. It has not been optimized in anyway, my main aim was to get a parser that
+  works. Lookahead may not be optimum at choice points and may even be insufficient at
+  times. I choose to err on the side of not optimum if I made a choice at all.
+
+  If you use this grammar, I would appreciate hearing from you. I will try to maintain
+  this grammar to the best of my ability, but at this point in time, this is only a side
+  hobby (unless someone wants to pay me for doing JavaCC work!). In that regards, I am
+  interested in hearing bugs and comments.
+
+  TODO:
+
+    Insert the appropriate code to enable C source trees from this grammar.
+
+  */
+
+PARSER_BEGIN(CParser)
+
+import java.util.*;
+
+public class CParser {
+
+    // Hastable for storing typedef types
+    public static Hashtable types = new Hashtable();
+
+    // Stack for determining when the parser
+    // is parsing a typdef definition.
+    public static Stack typedefParsingStack = new Stack();
+
+    // Returns true if the given string is
+    // a typedef type.
+    public static boolean isType(String type) {
+  	if (types.get(type) != null) {
+   	    return true;
+        }
+   	return false;
+    }
+
+    // Add a typedef type to those already defined
+    public static void addType(String type) {
+   	  types.put(type, Boolean.TRUE);
+    }
+
+    // Prints out all the types used in parsing the c source
+    public static void printTypes() {
+
+        Enumeration enum1 = types.keys();
+
+        while (enum1.hasMoreElements()) {
+            System.out.println(enum1.nextElement());
+        }
+    }
+}
+
+PARSER_END(CParser)
+
+TOKEN_MGR_DECLS :
+{
+	static int attributeMatchingParens;
+}
+
+SKIP : {
+ " "
+|  "\t"
+|  "\n"
+|  "\r"
+|  "\f"
+|  <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+|  <"/*" (~["*"])* "*" ("*" | ~["*","/"] (~["*"])* "*")* "/">
+}
+
+<DEFAULT,AfterCrossbar,Pragma,Omp> TOKEN : {
+ <INTEGER_LITERAL: <DECIMAL_LITERAL> (["l","L"])? | <HEX_LITERAL> (["l","L"])? | <OCTAL_LITERAL> (["l","L"])?>
+|  <#DECIMAL_LITERAL: ["1"-"9"] (["0"-"9"])*>
+|  <#HEX_LITERAL: "0" ["x","X"] (["0"-"9","a"-"f","A"-"F"])+>
+|  <#OCTAL_LITERAL: "0" (["0"-"7"])*>
+|  <FLOATING_POINT_LITERAL: (["0"-"9"])+ "." (["0"-"9"])* (<EXPONENT>)? (["f","F","d","D"])? | "." (["0"-"9"])+ (<EXPONENT>)? (["f","F","d","D"])? | (["0"-"9"])+ <EXPONENT> (["f","F","d","D"])? | (["0"-"9"])+ (<EXPONENT>)? ["f","F","d","D"]>
+|  <#EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+>
+|  <CHARACTER_LITERAL: "\'" (~["\'","\\","\n","\r"] | "\\" (["n","t","b","r","f","\\","\'","\""] | ["0"-"7"] (["0"-"7"])? | ["0"-"3"] ["0"-"7"] ["0"-"7"])) "\'">
+|  <STRING_LITERAL: "\"" (~["\"","\\","\n","\r"] | "\\" (["n","t","b","r","f","\\","\'","\""] | ["0"-"7"] (["0"-"7"])? | ["0"-"3"] ["0"-"7"] ["0"-"7"]))* "\"">
+}
+
+<DEFAULT> MORE : {
+	"__attribute__" { attributeMatchingParens = 0; } : AfterAttrib
+}
+
+<AfterAttrib> MORE : {
+	"(" { attributeMatchingParens++; }
+|	")" { attributeMatchingParens--; if (attributeMatchingParens == 1) SwitchTo(AtAttribEnd); }
+|	<~[]>
+}
+
+<AtAttribEnd> MORE : {
+	"(" { attributeMatchingParens++; } : AfterAttrib
+|	<~[")"]>
+}
+
+<AtAttribEnd> SPECIAL_TOKEN : {
+	<__ATTRIBUTE: ")"> { attributeMatchingParens--; } : DEFAULT
+}
+
+/*
+<DEFAULT> SPECIAL_TOKEN : {
+ 	"__const" 
+}
+*/
+
+<DEFAULT,Omp> TOKEN : {
+	<RESTRICT: "__restrict"> |
+	<CONTINUE: "continue"> |
+	<VOLATILE: "volatile"> |
+	<REGISTER: "register"> |
+	<UNSIGNED: "unsigned"> |
+	<TYPEDEF: "typedef"> |
+	<DFLT: "default"> |
+	<DOUBLE: "double"> |
+	<SIZEOF: "sizeof"> |
+	<SWITCH: "switch"> |
+	<RETURN: "return"> |
+	<EXTERN: "extern"> |
+	<STRUCT: "struct"> |
+	<STATIC: "static"> |
+	<SIGNED: "signed"> |
+	<WHILE: "while"> |
+	<BREAK: "break"> |
+	<UNION: "union"> |
+	<CONST: "const"> |
+	<CCONST: "__const"> |
+	<FLOAT: "float"> |
+	<SHORT: "short"> |
+	<ELSE: "else"> |
+	<CASE: "case"> |
+	<LONG: "long"> |
+	<ENUM: "enum"> |
+	<AUTO: "auto"> |
+	<VOID: "void"> |
+	<CHAR: "char"> |
+	<GOTO: "goto"> |
+	<FOR: "for"> |
+	<INT: "int"> |
+	<IF: "if"> |
+	<DO: "do">
+}
+
+<DEFAULT,AfterCrossbar,Pragma,Omp>
+TOKEN : {
+  <ELLIPSIS: "...">
+| <OP_SLASS: "<<=">
+| <OP_SRASS: ">>=">
+| <OP_EQ: "==">
+| <OP_AND: "&&">
+| <OP_OR: "||">
+| <OP_MULASS: "*=">
+| <OP_DIVASS: "/=">
+| <OP_MODASS: "%=">
+| <OP_ADDASS: "+=">
+| <OP_SUBASS: "-=">
+| <OP_ANDASS: "&=">
+| <OP_XORASS: "^=">
+| <OP_ORASS: "|=">
+| <OP_SL: "<<">
+| <OP_SR: ">>">
+| <OP_NEQ: "!=">
+| <OP_GE: ">=">
+| <OP_LE: "<=">
+| <OP_DEREF: "->">
+| <OP_INCR: "++">
+| <OP_DECR: "--">
+| <OP_GT: ">">
+| <OP_LT: "<">
+| <OP_ADD: "+">
+| <OP_SUB: "-">
+| <OP_MUL: "*">
+| <OP_DIV: "/">
+| <OP_MOD: "%">
+| <OP_ASS: "=">
+| <OP_BITAND: "&">
+| <OP_BITOR: "|">
+| <OP_BITXOR: "^">
+| <OP_NOT: "!">
+| <OP_BITNOT: "~">
+| <COLON: ":">
+| <SEMICOLON: ";">
+| <QUESTION: "?">
+| <DOT: ".">
+| <LEFTPAREN: "(">
+| <RIGHTPAREN: ")">
+| <LEFTBRACKET: "[">
+| <RIGHTBRACKET: "]">
+| <LEFTBRACE: "{">
+| <RIGHTBRACE: "}">
+| <COMMA: ",">
+}
+
+TOKEN : {
+  <CROSSBAR: "#"> : AfterCrossbar
+}
+
+<AfterCrossbar,Cpp> TOKEN : {
+  <UNKNOWN_CPP: ( "\r" | "\n" )+> : DEFAULT
+}
+
+<AfterCrossbar> TOKEN : {
+  <PRAGMA: "pragma"> : Pragma
+}
+
+<AfterCrossbar> MORE : {
+  "include" : Cpp
+| "import" : Cpp
+| "define" : Cpp
+| "ifndef" : Cpp
+| "ident" : Cpp
+| "undef" : Cpp
+| "ifdef" : Cpp
+| "endif" : Cpp
+| "line" : Cpp
+}
+
+<Cpp> SKIP : {
+  <"\\" ( ( "\r" ["\n"] ) | "\n" )>
+}
+
+<Cpp> MORE : {
+  <~[]>
+}
+
+<Pragma,Omp> SKIP : {
+   " "
+|  "\t"
+|  <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+|  <"/*" (~["*"])* "*" ("*" | ~["*","/"] (~["*"])* "*")* "/">
+}
+
+<Pragma> SKIP : {
+   "\n" : DEFAULT
+|  "\r" : DEFAULT
+}
+
+<Omp> TOKEN : {
+   <OMP_NL: "\n"> : DEFAULT
+|  <OMP_CR: "\r"> : DEFAULT
+}
+
+<AfterCrossbar> SKIP : {
+   " "
+|  "\t"
+|  <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+|  <"/*" (~["*"])* "*" ("*" | ~["*","/"] (~["*"])* "*")* "/">
+}
+
+<Pragma> TOKEN : {
+  <OMP: "omp"> : Omp
+}
+
+<Pragma> MORE : {
+  <~[]> : Cpp
+}
+
+<Omp> TOKEN : {
+  <PARALLEL: "parallel"> 
+| <SECTIONS: "sections"> 
+| <SECTION: "section"> 
+| <SINGLE: "single"> 
+| <ORDERED: "ordered"> 
+| <MASTER: "master"> 
+| <CRITICAL: "critical"> 
+| <ATOMIC: "atomic"> 
+| <BARRIER: "barrier">
+| <FLUSH: "flush">
+| <NOWAIT: "nowait">
+| <SCHEDULE: "schedule">
+| <DYNAMIC: "dynamic">
+| <GUIDED: "guided">
+| <RUNTIME: "runtime">
+| <NONE: "none">
+| <REDUCTION: "reduction"> 
+| <PRIVATE: "private"> 
+| <FIRSTPRIVATE: "firstprivate"> 
+| <LASTPRIVATE: "lastprivate"> 
+| <SHARED: "shared"> 
+| <COPYIN: "copyin"> 
+| <THREADPRIVATE: "threadprivate"> 
+}
+
+<DEFAULT,AfterCrossbar,Omp>
+TOKEN : {
+   <IDENTIFIER: <LETTER> (<LETTER> | <DIGIT>)*>
+|  <#LETTER: ["$","A"-"Z","_","a"-"z"]>
+|  <#DIGIT: ["0"-"9"]>
+}
+
+// C with OpenMP Grammar
+
+void TranslationUnit() : {}
+{
+	(LOOKAHEAD(3) ExternalDeclaration() | LOOKAHEAD(3) UnknownCpp() | UnknownPragma() )+
+}
+
+void ExternalDeclaration() : {}
+{
+	( LOOKAHEAD( FunctionDefinition() ) FunctionDefinition() | Declaration() | ThreadprivateDirective() )
+}
+
+void FunctionDefinition() : {}
+{
+	[LOOKAHEAD(DeclarationSpecifiers()) DeclarationSpecifiers()] Declarator() [ DeclarationList() ]
+	CompoundStatement()
+}
+
+void Declaration() : {}
+{
+	DeclarationSpecifiers() [ InitDeclaratorList() ] <SEMICOLON>
+}
+
+void DeclarationList() : {}
+{
+	( LOOKAHEAD(Declaration()) Declaration() )+
+}
+
+void DeclarationSpecifiers() : {}
+{
+	( StorageClassSpecifier() | TypeSpecifier() | TypeQualifier() )+
+}
+
+void StorageClassSpecifier() : {}
+{
+	<AUTO> | <REGISTER> | <STATIC> | <EXTERN> | <TYPEDEF>
+	{
+		typedefParsingStack.push(Boolean.TRUE);
+	}
+}
+
+void TypeSpecifier() : {}
+{
+	<VOID> | <CHAR> | <SHORT> | <INT> | <LONG> | <FLOAT> | <DOUBLE> | <SIGNED> |
+	<UNSIGNED> | StructOrUnionSpecifier() | EnumSpecifier() | LOOKAHEAD( { isType(getToken(1).image) } )TypedefName()
+}
+
+void TypeQualifier() : {}
+{
+	<RESTRICT> | <CONST> | <VOLATILE> | <CCONST>
+}
+
+void StructOrUnionSpecifier() : {}
+{
+	{
+			typedefParsingStack.push(Boolean.FALSE);
+	}
+
+	StructOrUnion() ( LOOKAHEAD(3) [ <IDENTIFIER> ] <LEFTBRACE> StructDeclarationList() <RIGHTBRACE> | <IDENTIFIER> )
+
+	{
+		typedefParsingStack.pop();
+	}
+}
+
+void StructOrUnion() : {}
+{
+	<STRUCT> | <UNION>
+}
+
+void StructDeclarationList() : {}
+{
+	(StructDeclaration())+
+}
+
+void InitDeclaratorList() : {}
+{
+	InitDeclarator() (<COMMA> InitDeclarator())*
+	{
+		// Finished with a typedefDeclaration??
+		if(!(typedefParsingStack.empty()) && ((Boolean)typedefParsingStack.peek()).booleanValue()){
+		   	typedefParsingStack.pop();
+	  	}
+	}
+}
+
+void InitDeclarator() : {}
+{
+	Declarator() [ <OP_ASS> Initializer() ]
+}
+
+void StructDeclaration() : {}
+{
+	SpecifierQualifierList() StructDeclaratorList() <SEMICOLON>
+}
+
+void SpecifierQualifierList() : {}
+{
+	  ( TypeSpecifier() | TypeQualifier() )+
+}
+
+void StructDeclaratorList() : {}
+{
+	StructDeclarator() ( <COMMA> StructDeclarator() )*
+}
+
+void StructDeclarator() : {}
+{
+	Declarator() [ <COLON> ConstantExpression() ]
+	| <COLON> ConstantExpression()
+}
+
+void EnumSpecifier() : {}
+{
+	<ENUM> ( LOOKAHEAD(3) [ <IDENTIFIER> ] <LEFTBRACE> EnumeratorList() <RIGHTBRACE> | <IDENTIFIER> )
+}
+
+void EnumeratorList() : {}
+{
+	Enumerator() (<COMMA> Enumerator())*
+}
+
+void Enumerator() : {}
+{
+	<IDENTIFIER> [ <OP_ASS> ConstantExpression() ]
+}
+
+void Declarator() : {}
+{
+	[ Pointer() ] DirectDeclarator()
+}
+
+void DirectDeclarator() : {}
+{
+	( <IDENTIFIER>
+	{ //in JTB, the IDENTIFIER we need has been assigned to 'n2'
+	  if(!(typedefParsingStack.empty()) && ((Boolean)typedefParsingStack.peek()).booleanValue())
+	    addType(n2.image);
+	}
+	 | <LEFTPAREN> Declarator() <RIGHTPAREN> )
+
+	( LOOKAHEAD(3) <LEFTBRACKET> [ ConstantExpression() ] <RIGHTBRACKET> |
+	    LOOKAHEAD(3) <LEFTPAREN> ParameterTypeList() <RIGHTPAREN> |
+	    LOOKAHEAD(3) <LEFTPAREN> [ IdentifierList() ] <RIGHTPAREN> )*
+}
+
+void Pointer() : {}
+{
+	<OP_MUL> [ TypeQualifierList() ] [ Pointer() ]
+}
+
+void TypeQualifierList() : {}
+{
+	(TypeQualifier())+
+}
+
+void ParameterTypeList() : {}
+{
+	ParameterList() [ <COMMA> <ELLIPSIS> ]
+}
+
+void ParameterList() : {}
+{
+	ParameterDeclaration() (LOOKAHEAD(2) <COMMA> ParameterDeclaration())*
+}
+
+void ParameterDeclaration() : {}
+{
+	DeclarationSpecifiers() ( LOOKAHEAD(Declarator()) Declarator() | [ AbstractDeclarator() ] )
+}
+
+void IdentifierList() : {}
+{
+	<IDENTIFIER> (<COMMA> <IDENTIFIER>)*
+}
+
+void Initializer() : {}
+{
+	AssignmentExpression() | <LEFTBRACE> InitializerList() [<COMMA>] <RIGHTBRACE>
+}
+
+void InitializerList() : {}
+{
+	Initializer() (LOOKAHEAD(2) <COMMA> Initializer())*
+}
+
+void TypeName() : {}
+{
+	SpecifierQualifierList() [ AbstractDeclarator() ]
+
+}
+
+void AbstractDeclarator() : {}
+{
+	( LOOKAHEAD(3) Pointer() [ DirectAbstractDeclarator() ] |
+	  DirectAbstractDeclarator()  )
+}
+
+void DirectAbstractDeclarator() : {}
+{
+	( LOOKAHEAD(2) <LEFTPAREN>    AbstractDeclarator()  <RIGHTPAREN>   |
+	               <LEFTBRACKET> [ConstantExpression()] <RIGHTBRACKET> |
+	               <LEFTPAREN>   [ParameterTypeList()]  <RIGHTPAREN> )
+	( <LEFTBRACKET> [ ConstantExpression() ] <RIGHTBRACKET> | <LEFTPAREN> [ ParameterTypeList() ] <RIGHTPAREN> )*
+}
+
+void TypedefName() : {}
+{
+	<IDENTIFIER>
+}
+
+void Statement() : {}
+{
+	( LOOKAHEAD(2) LabeledStatement() |
+	  ExpressionStatement() |
+	  CompoundStatement() |
+	  SelectionStatement() |
+	  IterationStatement() |
+	  JumpStatement() |
+	  LOOKAHEAD(4) UnknownPragma() |
+	  LOOKAHEAD(4) OmpConstruct() |
+	  LOOKAHEAD(2) OmpDirective() |
+	  UnknownCpp() )
+}
+
+void UnknownCpp() : {}
+{
+	<CROSSBAR> <UNKNOWN_CPP> 
+}
+
+void OmpEol() : {}
+{
+    <OMP_CR> | <OMP_NL>
+}
+
+void OmpConstruct() : {}
+{
+	OmpPragma() 
+	( LOOKAHEAD(2) ParallelConstruct()
+	| LOOKAHEAD(2) ParallelForConstruct()
+	| LOOKAHEAD(2) ParallelSectionsConstruct()
+	| ForConstruct()
+	| SectionsConstruct()
+	| SingleConstruct()
+	| MasterConstruct()
+	| CriticalConstruct()
+	| AtomicConstruct()
+	| OrderedConstruct()
+	)
+}
+
+void OmpDirective() : {}
+{
+	OmpPragma()
+	( BarrierDirective()
+	| FlushDirective()
+	)
+}
+
+void ParallelConstruct() : {}
+{
+	ParallelDirective() Statement()
+}
+
+void OmpPragma() : {}
+{
+	<CROSSBAR> <PRAGMA> <OMP>
+}
+
+void UnknownPragma() : {}
+{	
+	<CROSSBAR> <PRAGMA> <UNKNOWN_CPP>
+}
+
+void ParallelDirective() : {}
+{
+	<PARALLEL> ( UniqueParallelClause() | DataClause() )* OmpEol()
+}
+
+void UniqueParallelClause() : {}
+{
+	<IF> <LEFTPAREN> Expression() <RIGHTPAREN>
+}
+
+void ForConstruct() : {}
+{
+	ForDirective() OmpForHeader() Statement()
+}
+
+void ForDirective() : {}
+{
+	<FOR> ( UniqueForClause() | DataClause() | <NOWAIT> )* OmpEol()
+}
+
+void UniqueForClause() : {}
+{
+	<ORDERED> | <SCHEDULE> <LEFTPAREN> ScheduleKind() [ <COMMA> Expression() ] <RIGHTPAREN>
+}
+
+void ScheduleKind() : {}
+{
+	<STATIC> | <DYNAMIC> | <GUIDED> | <RUNTIME>
+}
+
+void OmpForHeader() : {}
+{
+	<FOR> <LEFTPAREN> OmpForInitExpression() <SEMICOLON> OmpForCondition() <SEMICOLON> OmpForReinitExpression() <RIGHTPAREN>
+}
+
+void OmpForInitExpression() : {}
+{
+	<IDENTIFIER> <OP_ASS> Expression()
+}
+
+void OmpForCondition() : {}
+{
+	<IDENTIFIER> ( <OP_LT> | <OP_LE> | <OP_GT> | <OP_GE> ) Expression()
+}
+
+void OmpForReinitExpression() : {}
+{
+	LOOKAHEAD(2) ( <OP_INCR> | <OP_DECR> ) <IDENTIFIER>
+|	LOOKAHEAD(2) <IDENTIFIER> ( <OP_INCR> | <OP_DECR> )
+|	LOOKAHEAD(2) <IDENTIFIER> ( <OP_ADDASS> | <OP_SUBASS> ) Expression()
+|	<IDENTIFIER> <OP_ASS> ( 
+			LOOKAHEAD(2) <IDENTIFIER> ( <OP_ADD> | <OP_SUB> ) AdditiveExpression()
+		|	MultiplicativeExpression() <OP_ADD> <IDENTIFIER> )
+}
+
+void SectionsConstruct() : {} 
+{
+	<SECTIONS> ( <NOWAIT> | DataClause() )* OmpEol() SectionsScope()
+}
+
+void SectionsScope() : {}
+{
+	<LEFTBRACE> [ LOOKAHEAD(2) Statement() ] ( OmpPragma() <SECTION> OmpEol() Statement() )* <RIGHTBRACE>
+}
+
+void SingleConstruct() : {}
+{
+	<SINGLE> ( <NOWAIT> | DataClause() )* OmpEol() Statement()
+}
+
+void ParallelForConstruct() : {}
+{
+	<PARALLEL> <FOR> ( UniqueParallelClause() | UniqueForClause() | DataClause() )* OmpEol() OmpForHeader() Statement()
+}
+
+void ParallelSectionsConstruct() : {}
+{
+	<PARALLEL> <SECTIONS> ( UniqueParallelClause() | DataClause() )* OmpEol() SectionsScope()
+}
+
+void MasterConstruct() : {}
+{
+	<MASTER> OmpEol() Statement()
+}
+
+void CriticalConstruct() : {}
+{
+	<CRITICAL> [ <LEFTPAREN> <IDENTIFIER> <RIGHTPAREN> ] OmpEol() Statement()
+}
+
+void AtomicConstruct() : {}
+{
+	<ATOMIC> OmpEol() ExpressionStatement()
+}
+
+void FlushDirective() : {}
+{
+	<FLUSH> [ LOOKAHEAD(2) <LEFTPAREN> VariableList() <RIGHTPAREN> ] OmpEol()
+}
+
+void OrderedConstruct() : {}
+{
+	<ORDERED> OmpEol() Statement()
+}
+
+void BarrierDirective() : {}
+{
+	<BARRIER> OmpEol()
+}
+
+void ThreadprivateDirective() : {}
+{
+	OmpPragma() <THREADPRIVATE> <LEFTPAREN> VariableList() <RIGHTPAREN> OmpEol()
+}
+
+void DataClause() : {}
+{
+	  <PRIVATE> <LEFTPAREN> VariableList() <RIGHTPAREN>
+	| <FIRSTPRIVATE> <LEFTPAREN> VariableList() <RIGHTPAREN>
+	| <LASTPRIVATE> <LEFTPAREN> VariableList() <RIGHTPAREN>
+	| <SHARED> <LEFTPAREN> VariableList() <RIGHTPAREN>
+	| <COPYIN> <LEFTPAREN> VariableList() <RIGHTPAREN>
+	| <DFLT> <LEFTPAREN> ( <SHARED> | <NONE> ) <RIGHTPAREN>
+	| <REDUCTION> <LEFTPAREN> ReductionOp() <COLON> VariableList() <RIGHTPAREN>
+}
+
+void ReductionOp() : {}
+{
+	  <OP_ADD> | <OP_MUL> | <OP_SUB> | <OP_BITAND> | <OP_BITXOR> | <OP_BITOR> | <OP_OR> | <OP_AND>
+}
+
+void VariableList() : {}
+{
+	<IDENTIFIER> ( <COMMA> <IDENTIFIER> )*
+}
+
+void LabeledStatement() : {}
+{
+	( <IDENTIFIER> <COLON> Statement() |
+	  <CASE> ConstantExpression() <COLON> Statement() |
+	  <DFLT> <COLON> Statement() )
+}
+
+void ExpressionStatement() : {}
+{
+	[ Expression() ] <SEMICOLON>
+}
+
+void CompoundStatement() : {}
+{
+	<LEFTBRACE> [ LOOKAHEAD(DeclarationList()) DeclarationList() ]
+	            [ StatementList() ]
+	<RIGHTBRACE>
+}
+
+void StatementList() : {}
+{
+	(Statement())+
+}
+
+void SelectionStatement() : {}
+{
+	( <IF> <LEFTPAREN> Expression() <RIGHTPAREN> Statement() [ LOOKAHEAD(2) <ELSE> Statement() ] |
+	  <SWITCH> <LEFTPAREN> Expression() <RIGHTPAREN> Statement() )
+}
+
+void IterationStatement() : {}
+{
+	( <WHILE> <LEFTPAREN> Expression() <RIGHTPAREN> Statement() |
+	  <DO> Statement() <WHILE> <LEFTPAREN> Expression() <RIGHTPAREN> <SEMICOLON> |
+	  <FOR> <LEFTPAREN> [ Expression() ] <SEMICOLON> [ Expression() ] <SEMICOLON> [ Expression() ] <RIGHTPAREN> Statement() )
+}
+
+void JumpStatement() : {}
+{
+	( <GOTO> <IDENTIFIER> <SEMICOLON> |
+	  <CONTINUE> <SEMICOLON> |
+	  <BREAK> <SEMICOLON> |
+	  <RETURN> [ Expression() ] <SEMICOLON> )
+}
+
+void Expression() : {}
+{
+	AssignmentExpression() ( <COMMA> AssignmentExpression() )*
+}
+
+void AssignmentExpression() : {}
+{
+	  LOOKAHEAD(UnaryExpression() AssignmentOperator()) UnaryExpression() AssignmentOperator() AssignmentExpression() |
+	  LOOKAHEAD(3) ConditionalExpression()
+}
+
+void AssignmentOperator() : {}
+{
+	( <OP_ASS> | <OP_MULASS> | <OP_DIVASS> | <OP_MODASS> | 
+	  <OP_ADDASS> | <OP_SUBASS> | <OP_SLASS> | <OP_SRASS> | <OP_ANDASS> | <OP_XORASS> | <OP_ORASS> )
+}
+
+void ConditionalExpression() : {}
+{
+	LogicalORExpression() [ <QUESTION> Expression() <COLON> ConditionalExpression() ]
+}
+
+void ConstantExpression() : {}
+{
+	ConditionalExpression()
+}
+
+void LogicalORExpression() : {}
+{
+	LogicalANDExpression() [ <OP_OR> LogicalORExpression() ]
+}
+
+void LogicalANDExpression() : {}
+{
+	InclusiveORExpression() [ <OP_AND> LogicalANDExpression() ]
+}
+
+void InclusiveORExpression() : {}
+{
+	ExclusiveORExpression() [ <OP_BITOR> InclusiveORExpression() ]
+}
+
+void ExclusiveORExpression() : {}
+{
+	ANDExpression() [ <OP_BITXOR> ExclusiveORExpression() ]
+}
+
+void ANDExpression() : {}
+{
+	EqualityExpression() [ <OP_BITAND> ANDExpression() ]
+}
+
+void EqualityExpression() : {}
+{
+	RelationalExpression() [ ( <OP_EQ> | <OP_NEQ> ) EqualityExpression() ]
+}
+
+void RelationalExpression() : {}
+{
+	ShiftExpression() [ ( <OP_LT> | <OP_GT> | <OP_LE> | <OP_GE> ) RelationalExpression() ]
+}
+
+void ShiftExpression() : {}
+{
+	AdditiveExpression() [ ( <OP_SL> | <OP_SR> ) ShiftExpression() ]
+}
+
+void AdditiveExpression() : {}
+{
+	MultiplicativeExpression() [ ( <OP_ADD> | <OP_SUB> ) AdditiveExpression() ]
+}
+
+void MultiplicativeExpression() : {}
+{
+	CastExpression() [ ( <OP_MUL> | <OP_DIV> | <OP_MOD> ) MultiplicativeExpression() ]
+}
+
+void CastExpression() : {}
+{
+	( LOOKAHEAD(<LEFTPAREN> TypeName() <RIGHTPAREN> CastExpression() ) <LEFTPAREN> TypeName() <RIGHTPAREN> CastExpression() |
+	  UnaryExpression() )
+}
+
+void UnaryExpression() : {}
+{
+	( LOOKAHEAD(3) PostfixExpression() |
+	  <OP_INCR> UnaryExpression() |
+	  <OP_DECR> UnaryExpression() |
+	  UnaryOperator() CastExpression() |
+	  <SIZEOF> ( LOOKAHEAD(UnaryExpression() ) UnaryExpression() | <LEFTPAREN> TypeName() <RIGHTPAREN> ) )
+}
+
+void UnaryOperator() : {}
+{
+	( <OP_BITAND> | <OP_MUL> | <OP_ADD> | <OP_SUB> | <OP_BITNOT> | <OP_NOT> )
+}
+
+void PostfixExpression() : {}
+{
+	PrimaryExpression() ( <LEFTBRACKET> Expression() <RIGHTBRACKET> |
+	                      <LEFTPAREN> [ LOOKAHEAD(ArgumentExpressionList() ) ArgumentExpressionList() ] <RIGHTPAREN> |
+	  					  <DOT> <IDENTIFIER> |
+	  					  <OP_DEREF> <IDENTIFIER> |
+	  					  <OP_INCR> |
+	  					  <OP_DECR> )*
+}
+
+void PrimaryExpression() : {}
+{
+	( <IDENTIFIER> |
+	  Constant() |
+	  <LEFTPAREN> Expression() <RIGHTPAREN> )
+}
+
+void ArgumentExpressionList() : {}
+{
+	AssignmentExpression() ( <COMMA> AssignmentExpression() )*
+}
+
+void Constant() : {}
+{
+ <INTEGER_LITERAL> | <FLOATING_POINT_LITERAL> | <CHARACTER_LITERAL> | ( <STRING_LITERAL> )+
+}
+
